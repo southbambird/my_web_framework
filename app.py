@@ -4,6 +4,10 @@ def http404(env, start_response):
     start_response('404 Not Found', [('Content-type', 'text/plain; charset=utf08')])
     return [b'404 Not Found']
 
+def http405(env, start_response):
+    start_response('405 Method Not Allowd', [('Content-type', 'text/plain; charset=utf-8')])
+    return [b'405 Method Not Allowd']
+    
 class Router:
     def __init__(self):
         self.routes = []
@@ -11,14 +15,20 @@ class Router:
     def add(self, method, path, callback):
         self.routes.append({
             'method': method,
-            'path': path,
+            'path_compiled': re.compile(path),
             'callback': callback,
         })
 
     def match(self, method, path):
+        error_callback = http404
         for r in self.routes:
-            matched = re.compile(r['path']).match(path)
-            if matched and r['method'] == method:
-                url_vars = matched.groupdict()
+            matched = r['path_compiled'].match(path)
+            if not matched:
+                continue
+
+            error_callback = http405
+            url_vars = matched.groupdict()
+            if method == r['method']:
                 return r['callback'], url_vars
-        return http404, {}
+            
+        return error_callback, {}
